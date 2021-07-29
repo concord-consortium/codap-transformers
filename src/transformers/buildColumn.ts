@@ -3,6 +3,7 @@ import { evalExpression, getContextAndDataSet } from "../lib/codapPhone/index";
 import { TransformerTemplateState } from "../components/transformer-template/TransformerTemplate";
 import { readableName } from "../transformers/util";
 import { reportTypeErrorsForRecords, cloneCollection } from "./util";
+import { t } from "../strings";
 
 /**
  * Builds a dataset with a new attribute added to one of the collections,
@@ -16,19 +17,19 @@ export async function buildColumn({
   typeContract1: { outputType },
 }: TransformerTemplateState): Promise<TransformationOutput> {
   if (contextName === null) {
-    throw new Error("Please choose a valid dataset to transform.");
+    throw new Error(t("errors:validation.noDataSet"));
   }
   if (collectionName === null) {
-    throw new Error("Please select a collection to add to");
+    throw new Error(t("errors:buildColum.noCollection"));
   }
   if (attributeName.trim() === "") {
-    throw new Error("Please enter a non-empty name for the new attribute");
+    throw new Error(t("errors:buildColumn.noAttribute"));
   }
   if (expression.trim() === "") {
-    throw new Error("Please enter a non-empty expression");
+    throw new Error(t("errors:buildColumn.noExpression"));
   }
   if (outputType === null) {
-    throw new Error("Please enter a valid output type");
+    throw new Error(t("errors:buildColumn.noOutputType"));
   }
 
   const { context, dataset } = await getContextAndDataSet(contextName);
@@ -65,7 +66,9 @@ export async function uncheckedBuildColumn(
   const toAdd = collections.find((coll) => coll.name === collectionName);
 
   if (toAdd === undefined) {
-    throw new Error(`Invalid collection name: ${collectionName}`);
+    throw new Error(
+      t("errors:validation.invalidCollection", { name: collectionName })
+    );
   }
 
   // ensure no duplicate attr names
@@ -74,7 +77,9 @@ export async function uncheckedBuildColumn(
       coll.attrs?.find((attr) => attr.name === newAttributeName)
     )
   ) {
-    throw new Error(`Attribute name already in use: ${newAttributeName}`);
+    throw new Error(
+      t("errors:validation.duplicateAttribute", { name: newAttributeName })
+    );
   }
 
   if (toAdd.attrs === undefined) {
