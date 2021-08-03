@@ -316,6 +316,31 @@ export function notifyInteractiveFrameIsDirty(): Promise<void> {
   );
 }
 
+/**
+ * Sends a request to select (bring to front) the plugin's interactive frame
+ */
+export async function notifyInteractiveFrameWithSelect(): Promise<void> {
+  const id = (await getInteractiveFrame()).id;
+  return new Promise<void>((resolve, reject) =>
+    phone.call(
+      {
+        action: CodapActions.Notify,
+        resource: resourceFromComponent(`${id}`),
+        values: {
+          request: "select",
+        },
+      },
+      (response) => {
+        if (response.success) {
+          resolve();
+        } else {
+          reject(new Error("Failed to notify component to select."));
+        }
+      }
+    )
+  );
+}
+
 export function getAllComponents(): Promise<ComponentListResponse["values"]> {
   return new Promise((resolve, reject) =>
     phone.call(
@@ -818,7 +843,10 @@ const TEXT_HEIGHT = 100;
 const TEXT_FONT_SIZE = 2;
 export async function createText(
   name: string,
-  content: string
+  content: string,
+  fontSize?: number,
+  width?: number,
+  height?: number
 ): Promise<string> {
   const textName = await ensureUniqueName(
     name,
@@ -834,13 +862,13 @@ export async function createText(
           type: CodapComponentType.Text,
           name: textName,
           dimensions: {
-            width: TEXT_WIDTH,
-            height: TEXT_HEIGHT,
+            width: width ? width : TEXT_WIDTH,
+            height: height ? height : TEXT_HEIGHT,
           },
           text: {
             object: "value",
             data: {
-              fontSize: TEXT_FONT_SIZE,
+              fontSize: fontSize ? fontSize : TEXT_FONT_SIZE,
             },
             document: {
               children: [
