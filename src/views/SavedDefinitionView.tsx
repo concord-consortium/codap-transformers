@@ -1,13 +1,15 @@
-import React, { ReactElement, useReducer } from "react";
+import React, { ReactElement } from "react";
 import { useState } from "react";
 import "./styles/Views.css";
-import ErrorDisplay from "../components/ui-components/Error";
+import ErrorDisplay, {
+  useErrorSetterId,
+  useErrorStore,
+} from "../components/ui-components/Error";
 import { SavedTransformer } from "../components/transformer-template/types";
 import { TextArea, TextInput } from "../components/ui-components";
 import {
   getInteractiveFrame,
   notifyInteractiveFrameIsDirty,
-  notifyInteractiveFrameWithSelect,
   updateInteractiveFrame,
 } from "../lib/codapPhone";
 import { useEffect } from "react";
@@ -18,10 +20,16 @@ import {
 } from "../lib/codapPhone/listeners";
 import "../components/transformer-template/styles/DefinitionCreator.css";
 import "./styles/SavedDefinitionView.css";
-import { useActiveTransformations } from "../transformerStore";
+import {
+  useActiveTransformations,
+  useEditedOutputs,
+} from "../transformerStore";
 import { ActionTypes } from "../transformerStore/types";
 import { deserializeActiveTransformations } from "../transformerStore/util";
 import { TransformerRenderer } from "../components/transformer-template/TransformerRenderer";
+import { closePlugin } from "./util";
+import { IconButton } from "@material-ui/core";
+import { Cancel } from "@material-ui/icons";
 
 /**
  * SavedDefinitionView wraps a saved transformer in other important info
@@ -32,20 +40,18 @@ function SavedDefinitionView({
 }: {
   transformer: SavedTransformer;
 }): ReactElement {
-  const [errMsg, setErrMsg] = useReducer(
-    (oldState: string | null, newState: string | null): string | null => {
-      if (newState) {
-        notifyInteractiveFrameWithSelect();
-      }
-      return newState;
-    },
-    null
-  );
+  const [errorStore, setErrMsg] = useErrorStore();
+  const errorId = useErrorSetterId();
+
   const [editable, setEditable] = useState<boolean>(false);
   const [savedTransformer, setSavedTransformer] = useState(urlTransformer);
   const [saveErr, setSaveErr] = useState<string | null>(null);
-  const [, activeTransformationsDispatch, wrappedDispatch] =
-    useActiveTransformations(setErrMsg);
+  const [editedOutputs, addEditedOutput, setEditedOutputs] = useEditedOutputs();
+  const [
+    activeTransformations,
+    activeTransformationsDispatch,
+    wrappedDispatch,
+  ] = useActiveTransformations(setErrMsg, editedOutputs, addEditedOutput);
 
   // Load saved state from CODAP memory
   useEffect(() => {
@@ -69,11 +75,14 @@ function SavedDefinitionView({
           ),
         });
       }
+      if (savedState.editedOutputs !== undefined) {
+        setEditedOutputs(new Set(savedState.editedOutputs));
+      }
     }
     fetchSavedState();
 
     // Identity of dispatch is stable since it came from useReducer
-  }, [activeTransformationsDispatch, savedTransformer]);
+  }, [activeTransformationsDispatch, savedTransformer, setEditedOutputs]);
 
   // Register a listener to generate the plugin's state
   useEffect(() => {
@@ -116,10 +125,23 @@ function SavedDefinitionView({
           onBlur={notifyStateIsDirty}
         />
       ) : (
-        <h2>
-          {savedTransformer.name}
-          <span id="transformerBase"> ({savedTransformer.content.base})</span>
-        </h2>
+        <div className="title-row">
+          <h2>
+            {savedTransformer.name}
+            <span id="transformerBase"> ({savedTransformer.content.base})</span>
+          </h2>
+          <IconButton
+            style={{
+              padding: "0",
+              marginLeft: "auto",
+            }}
+            size="medium"
+            onClick={() => closePlugin(activeTransformations)}
+            title="Close definition"
+          >
+            <Cancel htmlColor="var(--blue-green)" fontSize="inherit" />
+          </IconButton>
+        </div>
       )}
       {editable ? (
         <>
@@ -143,7 +165,7 @@ function SavedDefinitionView({
       )}
       <TransformerRenderer
         setErrMsg={setErrMsg}
-        errorDisplay={<ErrorDisplay message={errMsg} />}
+        errorDisplay={<ErrorDisplay setErrMsg={setErrMsg} store={errorStore} />}
         transformer={savedTransformer}
         editable={editable}
         activeTransformationsDispatch={wrappedDispatch}
@@ -152,7 +174,7 @@ function SavedDefinitionView({
         id="edit-button"
         onClick={() => {
           // clear the transformer application error message
-          setErrMsg(null);
+          setErrMsg(null, errorId);
 
           // if going to non-editable (saving) and name is blank
           if (editable && savedTransformer.name.trim() === "") {
@@ -177,7 +199,10 @@ function SavedDefinitionView({
       >
         {editable ? "Save" : "Edit"}
       </button>
-      <ErrorDisplay message={saveErr} />
+      <ErrorDisplay
+        setErrMsg={(err, _id) => setSaveErr(err)}
+        store={saveErr === null ? [] : [[0, saveErr]]}
+      />
     </div>
   );
 }

@@ -2,7 +2,10 @@ import React, { ReactElement, useEffect } from "react";
 import { useState } from "react";
 import "./styles/Views.css";
 import "./styles/REPLView.css";
-import ErrorDisplay from "../components/ui-components/Error";
+import ErrorDisplay, {
+  useErrorSetterId,
+  useErrorStore,
+} from "../components/ui-components/Error";
 import { SavedTransformer } from "../components/transformer-template/types";
 import transformerList, {
   BaseTransformerName,
@@ -11,7 +14,6 @@ import transformerList, {
 import {
   getInteractiveFrame,
   notifyInteractiveFrameIsDirty,
-  notifyInteractiveFrameWithSelect,
 } from "../lib/codapPhone";
 import {
   addInteractiveStateRequestListener,
@@ -19,13 +21,18 @@ import {
 } from "../lib/codapPhone/listeners";
 import { InteractiveState } from "../lib/codapPhone/types";
 import AboutInfo from "../components/info-components/AboutInfo";
-import { useActiveTransformations } from "../transformerStore";
+import {
+  useActiveTransformations,
+  useEditedOutputs,
+} from "../transformerStore";
 import { ActionTypes } from "../transformerStore/types";
 import { deserializeActiveTransformations } from "../transformerStore/util";
 import { TransformerRenderer } from "../components/transformer-template/TransformerRenderer";
 import Select, { ValueType, ActionMeta } from "react-select";
 import TransformerInfo from "../components/info-components/TransformerInfo";
-import { useReducer } from "react";
+import { closePlugin } from "./util";
+import { Cancel } from "@material-ui/icons";
+import { IconButton } from "@material-ui/core";
 
 // These are the base transformer types represented as SavedTransformer
 // objects
@@ -67,19 +74,17 @@ function REPLView(): ReactElement {
   const [transformType, setTransformType] =
     useState<BaseTransformerName | null>(null);
 
-  const [errMsg, setErrMsg] = useReducer(
-    (oldState: string | null, newState: string | null): string | null => {
-      if (newState) {
-        notifyInteractiveFrameWithSelect();
-      }
-      return newState;
-    },
-    null
-  );
+  const [errorStore, setErrMsg] = useErrorStore();
+  const errorId = useErrorSetterId();
+
+  const [editedOutputs, addEditedOutput, setEditedOutputs] = useEditedOutputs();
 
   // activeTransformations (first element of tuple) can be used to draw a diagram
-  const [, activeTransformationsDispatch, wrappedDispatch] =
-    useActiveTransformations(setErrMsg);
+  const [
+    activeTransformations,
+    activeTransformationsDispatch,
+    wrappedDispatch,
+  ] = useActiveTransformations(setErrMsg, editedOutputs, addEditedOutput);
 
   function transformerChangeHandler(
     selected: ValueType<{ value: BaseTransformerName; label: string }, false>,
@@ -88,7 +93,7 @@ function REPLView(): ReactElement {
     if (selected !== null) {
       notifyStateIsDirty();
       setTransformType(selected.value);
-      setErrMsg(null);
+      setErrMsg(null, errorId);
     }
   }
 
@@ -110,9 +115,12 @@ function REPLView(): ReactElement {
           ),
         });
       }
+      if (savedState.editedOutputs !== undefined) {
+        setEditedOutputs(new Set(savedState.editedOutputs));
+      }
     }
     fetchSavedState();
-  }, [activeTransformationsDispatch]);
+  }, [activeTransformationsDispatch, setEditedOutputs]);
 
   // Register a listener to generate the plugins state
   useEffect(() => {
@@ -148,8 +156,19 @@ function REPLView(): ReactElement {
     <div className="transformer-view">
       <div className="title-row">
         <h3>Transformer</h3>
-
-        <AboutInfo />
+        <div>
+          <AboutInfo />
+          <IconButton
+            style={{
+              padding: "0",
+            }}
+            size="medium"
+            onClick={() => closePlugin(activeTransformations)}
+            title="Close plugin"
+          >
+            <Cancel htmlColor="var(--blue-green)" fontSize="inherit" />
+          </IconButton>
+        </div>
       </div>
 
       <div className="select-row">
@@ -171,7 +190,7 @@ function REPLView(): ReactElement {
 
       <TransformerRenderer
         setErrMsg={setErrMsg}
-        errorDisplay={<ErrorDisplay message={errMsg} />}
+        errorDisplay={<ErrorDisplay setErrMsg={setErrMsg} store={errorStore} />}
         transformer={baseTransformers.find(
           ({ name }) => name === transformType
         )}

@@ -211,3 +211,15 @@ export const [
   removeContextDeletedHook,
   callAllContextDeletedHooks,
 ] = makeHook();
+
+export const [
+  addTextDeletedHook,
+  removeTextDeletedHook,
+  callAllTextDeletedHooks,
+] = makeHook();
+
+export const [
+  addOutputTitleChangeHook,
+  removeOutputTitleChangeHook,
+  callAllOutputTitleChangeHooks,
+] = makeHook();

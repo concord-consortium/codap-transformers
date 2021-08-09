@@ -27,6 +27,7 @@ import {
   createMVRDisplay,
 } from "../components/transformer-template/util";
 import { ActionTypes } from "../transformerStore/types";
+import { t } from "../strings";
 
 /**
  * Contains a dataset as a result of a partition, and the distinct
@@ -52,7 +53,7 @@ const OUTPUT_WARN_THRESHOLD = 10;
  */
 function confirmOutput(outputDatasets: number, msg: string): boolean {
   if (outputDatasets >= OUTPUT_WARN_THRESHOLD) {
-    return confirm(`${msg}. Are you sure you want to proceed?`);
+    return confirm(`${msg}. ${t("errors:partition.wantToProceed")}`);
   }
   return true;
 }
@@ -106,14 +107,15 @@ export const partitionOverride = async (
   {
     context1: inputDataCtxt,
     attribute1: attributeName,
-  }: TransformerTemplateState
+  }: TransformerTemplateState,
+  errorId: number
 ): Promise<void> => {
   if (inputDataCtxt === null) {
-    setErrMsg("Please choose a valid dataset to transform.");
+    setErrMsg(t("errors:validation.noDataSet"), errorId);
     return;
   }
   if (attributeName === null) {
-    setErrMsg("Please select an attribute to partition by.");
+    setErrMsg(t("errors:partition.noAttribute"), errorId);
     return;
   }
 
@@ -135,11 +137,7 @@ export const partitionOverride = async (
   });
 
   if (transformed.length === 0) {
-    if (
-      !confirm(
-        `This partition will create 0 datasets but still go through. Is this what you intend?`
-      )
-    ) {
+    if (!confirm(t("errors:partition.confirmZeroDatasets"))) {
       return;
     }
   }
@@ -147,7 +145,7 @@ export const partitionOverride = async (
   if (
     !confirmOutput(
       transformed.length,
-      `This partition will create ${transformed.length} new datasets`
+      t("errors:partition.confirmManyDatasets", { number: transformed.length })
     )
   ) {
     return;
@@ -179,7 +177,8 @@ export const partitionOverride = async (
         {
           context1: inputDataCtxt,
           attribute1: attributeName,
-        } as TransformerTemplateState
+        } as TransformerTemplateState,
+        errorId
       )
   );
 
@@ -195,6 +194,7 @@ export const partitionOverride = async (
         outputContexts,
         valueToContext,
       },
+      errorId,
     },
   });
 
@@ -210,23 +210,29 @@ export interface PartitionSaveState {
   valueToContext: Record<string, string>;
 }
 
-export async function partitionUpdate(state: PartitionSaveState): Promise<{
+export async function partitionUpdate(
+  state: PartitionSaveState,
+  editedOutputs: Set<string>
+): Promise<{
   extraDependencies?: string[];
   state?: Partial<PartitionSaveState>;
 }> {
   try {
-    return await partitionUpdateInner(state);
+    return await partitionUpdateInner(state, editedOutputs);
   } catch (e) {
-    throw new Error(`Error updating partitioned tables: ${e.message}`);
+    throw new Error(`${t("errors:partition.errorUpdating")}: ${e.message}`);
   }
 }
 
-async function partitionUpdateInner({
-  inputDataCtxt,
-  attributeName,
-  outputContexts,
-  valueToContext,
-}: PartitionSaveState): Promise<{
+async function partitionUpdateInner(
+  {
+    inputDataCtxt,
+    attributeName,
+    outputContexts,
+    valueToContext,
+  }: PartitionSaveState,
+  editedOutputs: Set<string>
+): Promise<{
   extraDependencies?: string[];
   state?: Partial<PartitionSaveState>;
 }> {
@@ -238,7 +244,10 @@ async function partitionUpdateInner({
   if (
     !confirmOutput(
       transformed.length,
-      `Updating the partition of "${inputDataCtxtName}" will lead to ${transformed.length} total output datasets`
+      t("errors:partition.confirmUpdateManyDatasets", {
+        name: inputDataCtxtName,
+        number: transformed.length,
+      })
     )
   ) {
     return {};
@@ -265,8 +274,21 @@ async function partitionUpdateInner({
       newValueToContext[partitioned.distinctValueAsStr] = newName;
       outputContexts.push(newName);
     } else {
+      // If output title manually edited, don't update its title
+      const updateTitle = !editedOutputs.has(contextName);
+
       // apply an update to a previous dataset
-      updateContextWithDataSet(contextName, partitioned.dataset);
+      if (updateTitle) {
+        updateContextWithDataSet(contextName, partitioned.dataset, name, {
+          description: partitionDatasetDescription(
+            partitioned,
+            inputDataCtxtName,
+            attributeName
+          ),
+        });
+      } else {
+        updateContextWithDataSet(contextName, partitioned.dataset);
+      }
 
       // copy over existing context name into new valueToContext mapping
       newValueToContext[partitioned.distinctValueAsStr] = contextName;

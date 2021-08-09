@@ -45,6 +45,7 @@ import { displaySingleValue, tryTitle } from "../../transformers/util";
 import { makeDatasetImmutable } from "../../transformers/util";
 import "./styles/TransformerTemplate.css";
 import DefinitionCreator from "./DefinitionCreator";
+import { genErrorSetterId, useErrorSetterId } from "../ui-components/Error";
 
 // These types represent the configuration required for different UI elements
 interface ComponentInit {
@@ -68,6 +69,9 @@ interface DropdownInit extends ComponentInit {
     value: string;
   }[];
 }
+interface PromptInit extends ComponentInit {
+  prompt: string;
+}
 interface ExpressionInit extends ComponentInit {}
 interface TypeContractInit extends ComponentInit {
   inputTypes: string[] | string;
@@ -88,6 +92,8 @@ export type TransformerTemplateInit = {
   textInput2?: TextInputInit;
   dropdown1?: DropdownInit;
   dropdown2?: DropdownInit;
+  prompt1?: PromptInit;
+  prompt2?: PromptInit;
   expression1?: ExpressionInit;
   expression2?: ExpressionInit;
   typeContract1?: TypeContractInit;
@@ -193,7 +199,7 @@ const titleFromComponent = (
   return tmp && tmp.title ? <h3>{tmp.title}</h3> : <></>;
 };
 
-interface DatasetCreatorFunction {
+export interface DatasetCreatorFunction {
   kind: "datasetCreator";
   func: (state: TransformerTemplateState) => Promise<TransformationOutput>;
 }
@@ -202,9 +208,13 @@ export interface FullOverrideFunction {
   kind: "fullOverride";
   createFunc: (
     props: TransformerTemplateProps,
-    state: TransformerTemplateState
+    state: TransformerTemplateState,
+    errorId: number
   ) => Promise<void>;
-  updateFunc: (state: FullOverrideSaveState) => Promise<{
+  updateFunc: (
+    state: FullOverrideSaveState,
+    editedOutputs: Set<string>
+  ) => Promise<{
     extraDependencies?: string[];
     state?: Partial<FullOverrideSaveState>;
   }>;
@@ -214,7 +224,7 @@ export type TransformFunction = DatasetCreatorFunction | FullOverrideFunction;
 
 export type TransformerTemplateProps = {
   transformerFunction: TransformFunction;
-  setErrMsg: (s: string | null) => void;
+  setErrMsg: (s: string | null, id: number) => void;
   errorDisplay: ReactElement;
   base: BaseTransformerName;
   init: TransformerTemplateInit;
@@ -242,6 +252,9 @@ const TransformerTemplate = (props: TransformerTemplateProps): ReactElement => {
     setErrMsg,
     activeTransformationsDispatch,
   } = props;
+
+  // Refresh the errorId when the transformer changes
+  const errorId = useErrorSetterId();
 
   const [loading, setLoading] = useState<boolean>(false);
 
@@ -287,7 +300,9 @@ const TransformerTemplate = (props: TransformerTemplateProps): ReactElement => {
   useEffect(() => {
     if (saveData === undefined) {
       setState(DEFAULT_STATE);
+      setErrMsg(null, errorId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [init, saveData]);
 
   // The order here is guaranteed to be stable since ES2015 as long as we don't
@@ -301,7 +316,7 @@ const TransformerTemplate = (props: TransformerTemplateProps): ReactElement => {
   };
 
   const transform = async () => {
-    setErrMsg(null);
+    setErrMsg(null, errorId);
 
     const doTransform: () => Promise<TransformationOutput> = async () => {
       if (transformerFunction.kind !== "datasetCreator") {
@@ -346,11 +361,12 @@ const TransformerTemplate = (props: TransformerTemplateProps): ReactElement => {
           type: ActiveTransformationActionTypes.ADD,
           newTransformation: {
             inputs: inputContexts,
-            extraDependencies: [],
+            extraDependencies: [textName],
             outputType: TransformationOutputType.TEXT,
             output: textName,
             transformer: base as DatasetCreatorTransformerName,
             state,
+            errorId: genErrorSetterId(),
           },
         });
 
@@ -382,6 +398,7 @@ const TransformerTemplate = (props: TransformerTemplateProps): ReactElement => {
             output: newContextName,
             transformer: base as DatasetCreatorTransformerName,
             state,
+            errorId: genErrorSetterId(),
           },
         });
 
@@ -392,7 +409,7 @@ const TransformerTemplate = (props: TransformerTemplateProps): ReactElement => {
         }
       }
     } catch (e) {
-      setErrMsg(e.message);
+      setErrMsg(e.message, errorId);
     }
   };
 
@@ -546,6 +563,12 @@ const TransformerTemplate = (props: TransformerTemplateProps): ReactElement => {
           ) : (
             `${component} used but undefined`
           );
+        } else if (component === "prompt1" || component === "prompt2") {
+          return (
+            <div className="input-group">
+              <span>{init[component]?.prompt}</span>
+            </div>
+          );
         } else if (component === "expression1" || component === "expression2") {
           return (
             <div className="input-group">
@@ -579,7 +602,7 @@ const TransformerTemplate = (props: TransformerTemplateProps): ReactElement => {
             setLoading(true);
             transformerFunction.kind === "fullOverride"
               ? transformerFunction
-                  .createFunc(props, state)
+                  .createFunc(props, state, errorId)
                   .then(() => setLoading(false))
               : transform().then(() => setLoading(false));
           }}

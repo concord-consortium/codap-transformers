@@ -9,12 +9,13 @@ import { TransformerTemplateState } from "../components/transformer-template/Tra
 import { isMissing, tryTitle } from "../transformers/util";
 import { cloneCollection } from "./util";
 import { reportTypeErrorsForRecords } from "../lib/utils/typeChecking";
+import { t } from "../strings";
 
 /**
  * Builds a dataset with a new attribute added to one of the collections,
  * whose case values are computed by evaluating the given expression.
  */
-export async function buildColumn({
+export async function buildAttribute({
   context1: contextName,
   collection1: collectionName,
   textInput1: attributeName,
@@ -22,25 +23,25 @@ export async function buildColumn({
   typeContract1: { outputType },
 }: TransformerTemplateState): Promise<TransformationOutput> {
   if (contextName === null) {
-    throw new Error("Please choose a valid dataset to transform.");
+    throw new Error(t("errors:validation.noDataSet"));
   }
   if (collectionName === null) {
-    throw new Error("Please select a collection to add to");
+    throw new Error(t("errors:buildAttribute.noCollection"));
   }
   if (attributeName.trim() === "") {
-    throw new Error("Please enter a non-empty name for the new attribute");
+    throw new Error(t("errors:buildAttribute.noAttribute"));
   }
   if (expression.trim() === "") {
-    throw new Error("Please enter a non-empty expression");
+    throw new Error(t("errors:buildAttribute.noExpression"));
   }
   if (outputType === null) {
-    throw new Error("Please enter a valid output type");
+    throw new Error(t("errors:buildAttribute.noOutputType"));
   }
 
   const { context, dataset } = await getContextAndDataSet(contextName);
   const ctxtName = tryTitle(context);
 
-  const [withColumn, mvr] = await uncheckedBuildColumn(
+  const [withColumn, mvr] = await uncheckedBuildAttribute(
     dataset,
     attributeName,
     collectionName,
@@ -52,7 +53,7 @@ export async function buildColumn({
 
   return [
     withColumn,
-    `BuildColumn(${ctxtName}, ...)`,
+    `BuildAttribute(${ctxtName}, ...)`,
     `A copy of ${ctxtName} with a new attribute (${attributeName}) added to ` +
       `the ${collectionName} collection, whose value is determined by the formula \`${expression}\`.`,
     mvr,
@@ -63,7 +64,7 @@ export async function buildColumn({
  * Builds a dataset with a new attribute added to one of the collections,
  * whose case values are computed by evaluating the given expression.
  */
-export async function uncheckedBuildColumn(
+export async function uncheckedBuildAttribute(
   dataset: DataSet,
   newAttributeName: string,
   collectionName: string,
@@ -76,7 +77,9 @@ export async function uncheckedBuildColumn(
   const toAdd = collections.find((coll) => coll.name === collectionName);
 
   if (toAdd === undefined) {
-    throw new Error(`Invalid collection name: ${collectionName}`);
+    throw new Error(
+      t("errors:validation.invalidCollection", { name: collectionName })
+    );
   }
 
   // ensure no duplicate attr names
@@ -85,7 +88,9 @@ export async function uncheckedBuildColumn(
       coll.attrs?.find((attr) => attr.name === newAttributeName)
     )
   ) {
-    throw new Error(`Attribute name already in use: ${newAttributeName}`);
+    throw new Error(
+      t("errors:validation.duplicateAttribute", { name: newAttributeName })
+    );
   }
 
   if (toAdd.attrs === undefined) {

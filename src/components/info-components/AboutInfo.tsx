@@ -1,11 +1,23 @@
 import React, { ReactElement } from "react";
 import Popover from "../ui-components/Popover";
 import "./styles/AboutInfo.css";
+import HelpIcon from "@material-ui/icons/Help";
+import { IconButton } from "@material-ui/core";
 
 function AboutInfo(): ReactElement {
   return (
     <Popover
-      button={<button style={{ fontSize: "11px" }}>About</button>}
+      button={
+        <IconButton
+          style={{
+            padding: "0",
+            marginLeft: "auto",
+          }}
+          size="medium"
+        >
+          <HelpIcon htmlColor="var(--blue-green)" fontSize="inherit" />
+        </IconButton>
+      }
       tooltip={`About the Transformers Plugin`}
       innerContent={
         <div id="about-info">
