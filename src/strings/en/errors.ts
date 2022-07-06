@@ -75,7 +75,7 @@ const errors = {
   filter: {
     noExpression: "Please enter an expression by which to filter",
     nonBooleanResult:
-      "Please enter an expression that evaluates to a boolean. The one you entered evaluated to {{ value }} for case {{ caseNumber }}",
+      "Please enter an expression that evaluates to a Boolean. The one you entered evaluated to {{ value }} for case {{ caseNumber }}",
   },
   join: {
     noDataSetOrAttribute: "Please choose two datasets and two attributes",
@@ -125,6 +125,9 @@ const errors = {
       "Please provide a key expression that evaluates to the same type for all cases. Got keys of different types {{ value1 }} and {{ value2 }}",
     noKeyExpression: "Please enter a key expression",
     noSortDirection: "Please select a sort direction",
+    noSortMethod: "Please select a sort method",
+    noSortAttribute: "Please select an attribute by which to sort",
+    attributeTypeAny: "Cannot sort an attribute with mixed type",
   },
   sumProduct: {
     noAttribute:
@@ -139,6 +142,8 @@ const errors = {
     noOutputType: "Please enter an output type",
     invalidAttribute:
       'Please select a valid attribute to transform: "{{ name }}" was not found',
+    noTransformedAttributeName:
+      "Please enter a name for the transformed attribute",
   },
   codapPhone: {
     updateInteractiveFrame: {

@@ -169,7 +169,7 @@ export const partitionOverride = async (
 
   // Register undo action for partition transformer
   pushToUndoStack(
-    "Apply partition transformer",
+    "Apply Partition Transformer",
     () => outputContexts.forEach((context) => deleteDataContext(context)),
     () =>
       partitionOverride(
@@ -220,7 +220,9 @@ export async function partitionUpdate(
   try {
     return await partitionUpdateInner(state, editedOutputs);
   } catch (e) {
-    throw new Error(`${t("errors:partition.errorUpdating")}: ${e.message}`);
+    throw new Error(
+      `${t("errors:partition.errorUpdating")}: ${(e as Error).message}`
+    );
   }
 }
 

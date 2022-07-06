@@ -34,6 +34,7 @@ import { partitionOverride, partitionUpdate } from "./transformers/partition";
 import { editableCopyOverride } from "./transformers/editableCopy";
 import { transformAttribute } from "./transformers/transformAttribute";
 import { compare } from "./transformers/compare";
+import { codapLanguageTypes } from "./transformers/types";
 
 export type TransformersInteractiveState = {
   transformerREPL?: {
@@ -124,27 +125,40 @@ function docLinkFromHeadingID(headingID: string): string {
   return `https://docs.google.com/document/d/1NZA9gxtu6jD3M-5SQyx0tvV2N5qYKMgRm1XUwMnLgJU/edit#heading=${headingID}`;
 }
 
+// Placeholder text for purpose statements
+const EXPRESSION_PLACEHOLDER = "What does the expression do to each row?";
+
 const transformerList: TransformerList = {
   "Build Attribute": {
     group: "Constructing",
     componentData: {
       init: {
+        name: {
+          placeholder: "e.g., build-age-in-ten",
+        },
         context1: {
-          title: "Dataset to Add Attribute To",
+          title: "Dataset to Add Attribute to",
         },
         textInput1: {
           title: "Name of New Attribute",
         },
         collection1: {
-          title: "Collection to Add To",
+          title: "Collection to Add to",
         },
         typeContract1: {
-          title: "Formula for Attribute Values",
-          inputTypes: "row",
-          outputTypes: ["any", "string", "number", "boolean", "boundary"],
+          title: "Formula for New Attribute Values",
+          inputTypes: "Row",
+          outputTypes: codapLanguageTypes,
           inputTypeDisabled: true,
         },
-        expression1: { title: "" },
+        purposeStatement: {
+          placeholder: EXPRESSION_PLACEHOLDER,
+        },
+        expression1: {
+          title:
+            "For each row, construct the attribute {textInput1} with the result of the expression:",
+          placeholder: "e.g., Age + 10",
+        },
       },
       transformerFunction: { kind: "datasetCreator", func: buildAttribute },
       info: {
@@ -168,19 +182,32 @@ const transformerList: TransformerList = {
     group: "Constructing",
     componentData: {
       init: {
+        name: {
+          placeholder: "e.g., double-weight",
+        },
         context1: {
           title: "Dataset to Transform Attribute Of",
         },
         attribute1: {
           title: "Attribute to Transform",
         },
+        textInput1: {
+          title: "New Name for Transformed Attribute",
+        },
         typeContract1: {
-          title: "Formula for Transformed Values",
-          inputTypes: "row",
-          outputTypes: ["any", "string", "number", "boolean", "boundary"],
+          title: "Formula for Transformed Attribute Values",
+          inputTypes: "Row",
+          outputTypes: codapLanguageTypes,
           inputTypeDisabled: true,
         },
-        expression1: { title: "" },
+        purposeStatement: {
+          placeholder: EXPRESSION_PLACEHOLDER,
+        },
+        expression1: {
+          title:
+            "For each row, replace the value of attribute {attribute1} with the result of the expression:",
+          placeholder: "e.g., Weight * 2",
+        },
       },
       transformerFunction: { kind: "datasetCreator", func: transformAttribute },
       info: {
@@ -190,10 +217,11 @@ const transformerList: TransformerList = {
           indicate what type of value you expect the formula to evaluate to.",
         consumes:
           "A dataset, an attribute to transform, a formula that will determine \
-          the new values of the given attribute, and the type that the formula \
-          should evaluate to.",
+          the new values of the given attribute, the type that the formula \
+          should evaluate to, and a new name for the attribute being transformed.",
         produces:
-          "A copy of the input dataset with transformed values for the given attribute.",
+          "A copy of the input dataset with transformed values for the given \
+          attribute (which has been renamed).",
         docLink: docLinkFromHeadingID("h.dksm7abmovmg"),
       },
     },
@@ -202,21 +230,26 @@ const transformerList: TransformerList = {
     group: "Constructing",
     componentData: {
       init: {
+        name: {
+          placeholder: "e.g., filter-is-cat",
+        },
         context1: {
           title: "Dataset to Filter",
         },
         typeContract1: {
-          title: "How to Filter",
-          inputTypes: "row",
-          outputTypes: "boolean",
+          title: "Formula to Filter By",
+          inputTypes: "Row",
+          outputTypes: "Boolean",
           inputTypeDisabled: true,
           outputTypeDisabled: true,
         },
-        prompt1: {
-          title: "",
-          prompt: "Keep all rows that satisfy:",
+        purposeStatement: {
+          placeholder: EXPRESSION_PLACEHOLDER,
         },
-        expression1: { title: "" },
+        expression1: {
+          title: "Keep all rows that satisfy:",
+          placeholder: 'e.g., Species = "cat"',
+        },
       },
       transformerFunction: { kind: "datasetCreator", func: filter },
       info: {
@@ -231,49 +264,49 @@ const transformerList: TransformerList = {
       },
     },
   },
-  "Group By": {
-    group: "Constructing",
-    componentData: {
-      init: {
-        context1: {
-          title: "Dataset to Group",
-        },
-        attributeSet1: {
-          title: "Attributes to Group By",
-        },
-      },
-      transformerFunction: { kind: "datasetCreator", func: groupBy },
-      info: {
-        summary:
-          "Produces a new dataset that is grouped by combinations of the given \
-          attributes, by adding a new parent collection that contains copies of \
-          these attributes.",
-        consumes: "A dataset to group and a list of attributes to group by.",
-        produces:
-          "A copy of the input dataset whose cases are grouped by the given attributes.",
-        docLink: docLinkFromHeadingID("h.rdk3sh75yqxm"),
-      },
-    },
-  },
   Sort: {
     group: "Constructing",
     componentData: {
       init: {
+        name: {
+          placeholder: "e.g., order-by-pounds",
+        },
         context1: {
           title: "Dataset to sort",
         },
+        toggle: {
+          title: "Sort Method",
+          options: {
+            byAttribute: {
+              title: "By Attribute",
+              componentsHidden: ["typeContract1", "expression1", "description"],
+            },
+            byExpression: {
+              title: "By Expression",
+              componentsHidden: ["attribute1"],
+            },
+          },
+          defaultValue: "byAttribute",
+        },
+        attribute1: {
+          title: "Attribute to Sort By",
+        },
         typeContract1: {
-          title: "Key expression",
-          inputTypes: "row",
-          outputTypes: ["any", "string", "number", "boolean", "boundary"],
+          title: "Formula to Sort By",
+          inputTypes: "Row",
+          outputTypes: codapLanguageTypes,
           inputTypeDisabled: true,
         },
-        expression1: { title: "" },
+        expression1: {
+          title:
+            "Sort the rows in this dataset by a value, which is computed by:",
+          placeholder: "e.g., stringLength(Name)",
+        },
         dropdown1: {
           title: "Direction",
           options: [
-            { value: "descending", title: "descending" },
             { value: "ascending", title: "ascending" },
+            { value: "descending", title: "descending" },
           ],
           defaultValue: "Select a sort direction",
         },
@@ -281,14 +314,17 @@ const transformerList: TransformerList = {
       transformerFunction: { kind: "datasetCreator", func: sort },
       info: {
         summary:
-          "Takes a dataset and orders it, using the value of a formula to \
-          determine how cases should appear in order.",
+          'Takes a dataset and orders its cases, either by the values from a \
+          particular attribute (the "By Attribute" method), or the values \
+          produced by a formula (the "By Expression" method).',
         consumes:
-          "A dataset to sort, a formula ('key expression'), an indication of the \
-          type the formula evaluates to, and a sort direction (ascending or descending).",
+          "By Attribute: A dataset to sort, an attribute to sort by, and a sort \
+          direction (ascending or descending).\n\
+          By Expression: A dataset to sort, a formula, an indication of the type \
+          the formula evaluates to, and a sort direction (ascending or descending).",
         produces:
-          "A copy of the input dataset, with cases sorted by the value of the \
-          key expression.",
+          "A copy of the input dataset, with cases sorted according to the \
+          indicated method and direction.",
         docLink: docLinkFromHeadingID("h.9swamcujp916"),
       },
     },
@@ -297,6 +333,9 @@ const transformerList: TransformerList = {
     group: "Measuring the Center",
     componentData: {
       init: {
+        name: {
+          placeholder: "e.g., average-weight",
+        },
         context1: {
           title: "Dataset to Compute Mean Over",
         },
@@ -320,6 +359,9 @@ const transformerList: TransformerList = {
     group: "Measuring the Center",
     componentData: {
       init: {
+        name: {
+          placeholder: "e.g., median-time-to-adopt",
+        },
         context1: {
           title: "Dataset to Compute Median Over",
         },
@@ -345,6 +387,9 @@ const transformerList: TransformerList = {
     group: "Measuring the Center",
     componentData: {
       init: {
+        name: {
+          placeholder: "e.g., mode-num-legs",
+        },
         context1: {
           title: "Dataset to Compute Mode Over",
         },
@@ -369,6 +414,9 @@ const transformerList: TransformerList = {
     group: "Measuring the Center",
     componentData: {
       init: {
+        name: {
+          placeholder: "e.g., std-dev-of-age",
+        },
         context1: {
           title: "Dataset to Compute Standard Deviation Over",
         },
@@ -393,6 +441,9 @@ const transformerList: TransformerList = {
     group: "Aggregating",
     componentData: {
       init: {
+        name: {
+          placeholder: "e.g., running-sum-age",
+        },
         context1: {
           title: "Dataset to calculate running sum on",
         },
@@ -418,6 +469,9 @@ const transformerList: TransformerList = {
     group: "Aggregating",
     componentData: {
       init: {
+        name: {
+          placeholder: "e.g., running-mean-age",
+        },
         context1: {
           title: "Dataset to calculate running mean on",
         },
@@ -444,6 +498,9 @@ const transformerList: TransformerList = {
     group: "Aggregating",
     componentData: {
       init: {
+        name: {
+          placeholder: "e.g., running-min-age",
+        },
         context1: {
           title: "Dataset to calculate running min on",
         },
@@ -469,6 +526,9 @@ const transformerList: TransformerList = {
     group: "Aggregating",
     componentData: {
       init: {
+        name: {
+          placeholder: "e.g., running-max-age",
+        },
         context1: {
           title: "Dataset to calculate running max on",
         },
@@ -494,6 +554,9 @@ const transformerList: TransformerList = {
     group: "Aggregating",
     componentData: {
       init: {
+        name: {
+          placeholder: "e.g., weight-differences",
+        },
         context1: {
           title: "Dataset to calculate difference on",
         },
@@ -520,6 +583,9 @@ const transformerList: TransformerList = {
     group: "Aggregating",
     componentData: {
       init: {
+        name: {
+          placeholder: "e.g., diff-from-max-age",
+        },
         context1: {
           title: "Dataset to calculate difference on",
         },
@@ -536,7 +602,7 @@ const transformerList: TransformerList = {
       },
       info: {
         summary:
-          "Identical to the Difference transformer, but allows you to choose the \
+          "Identical to the Difference Transformer, but allows you to choose the \
           starting value that will be subtracted from the first case. See info \
           for Difference for more information.",
         consumes:
@@ -553,20 +619,28 @@ const transformerList: TransformerList = {
     group: "Aggregating",
     componentData: {
       init: {
+        name: {
+          placeholder: "e.g., total-age",
+        },
         context1: {
           title: "Dataset to Reduce",
         },
         textInput1: {
           title: "Result Attribute Name",
         },
-        expression1: {
-          title: "Starting Value",
-        },
         textInput2: {
           title: "Accumulator Name",
         },
+        purposeStatement: {
+          placeholder: EXPRESSION_PLACEHOLDER,
+        },
+        expression1: {
+          title: "Starting with:",
+          placeholder: "e.g., 0",
+        },
         expression2: {
-          title: "Formula for Next Accumulator",
+          title: "Compute the next value for each row by:",
+          placeholder: "e.g., Age + Accumulator",
         },
       },
       transformerFunction: { kind: "datasetCreator", func: genericFold },
@@ -594,6 +668,9 @@ const transformerList: TransformerList = {
     group: "Aggregating",
     componentData: {
       init: {
+        name: {
+          placeholder: "e.g., compute-weighted-avg",
+        },
         context1: {
           title: "Dataset to Take Sum Product of",
         },
@@ -621,6 +698,9 @@ const transformerList: TransformerList = {
     group: "Summarizing",
     componentData: {
       init: {
+        name: {
+          placeholder: "e.g., count-species",
+        },
         context1: {
           title: "Dataset to Count",
         },
@@ -648,23 +728,26 @@ const transformerList: TransformerList = {
     group: "Summarizing",
     componentData: {
       init: {
+        name: {
+          placeholder: "e.g., compare-change-in-weight",
+        },
         context1: {
           title: "Dataset to Compare",
         },
         attribute1: {
-          title: "First attribute to Compare",
+          title: "First Attribute to Compare",
         },
         attribute2: {
-          title: "Second attribute to Compare",
+          title: "Second Attribute to Compare",
           context: "context1",
         },
         dropdown1: {
-          title: "What kind of Comparison?",
+          title: "Comparison Type",
           options: [
             { value: "categorical", title: "Categorical" },
             { value: "numeric", title: "Numeric" },
           ],
-          defaultValue: "Select a type",
+          defaultValue: "Select a comparison type",
         },
       },
       transformerFunction: { kind: "datasetCreator", func: compare },
@@ -687,10 +770,40 @@ const transformerList: TransformerList = {
       },
     },
   },
+  "Group By": {
+    group: "Restructuring",
+    componentData: {
+      init: {
+        name: {
+          placeholder: "e.g., group-by-species",
+        },
+        context1: {
+          title: "Dataset to Group",
+        },
+        attributeSet1: {
+          title: "Attributes to Group By",
+        },
+      },
+      transformerFunction: { kind: "datasetCreator", func: groupBy },
+      info: {
+        summary:
+          "Produces a new dataset that is grouped by combinations of the given \
+          attributes, by adding a new parent collection that contains copies of \
+          these attributes.",
+        consumes: "A dataset to group and a list of attributes to group by.",
+        produces:
+          "A copy of the input dataset whose cases are grouped by the given attributes.",
+        docLink: docLinkFromHeadingID("h.rdk3sh75yqxm"),
+      },
+    },
+  },
   "Select Attributes": {
     group: "Restructuring",
     componentData: {
       init: {
+        name: {
+          placeholder: "e.g., select-name-and-weight",
+        },
         context1: {
           title: "Dataset to Select Attributes From",
         },
@@ -736,6 +849,9 @@ const transformerList: TransformerList = {
     group: "Restructuring",
     componentData: {
       init: {
+        name: {
+          placeholder: "e.g., combine-animal-datasets",
+        },
         context1: {
           title: "Base Dataset",
         },
@@ -766,6 +882,9 @@ const transformerList: TransformerList = {
     group: "Restructuring",
     componentData: {
       init: {
+        name: {
+          placeholder: "e.g., partition-by-species",
+        },
         context1: {
           title: "Dataset to Partition",
         },
@@ -795,6 +914,9 @@ const transformerList: TransformerList = {
     group: "Restructuring",
     componentData: {
       init: {
+        name: {
+          placeholder: "e.g., flatten",
+        },
         context1: {
           title: "Dataset to Flatten",
         },
@@ -814,6 +936,9 @@ const transformerList: TransformerList = {
     group: "Restructuring",
     componentData: {
       init: {
+        name: {
+          placeholder: "e.g., inner-join-on-name",
+        },
         context1: {
           title: "Base Dataset",
         },
@@ -854,6 +979,9 @@ const transformerList: TransformerList = {
     group: "Restructuring",
     componentData: {
       init: {
+        name: {
+          placeholder: "e.g., outer-join-on-name",
+        },
         context1: {
           title: "Base Dataset",
         },
@@ -906,6 +1034,9 @@ const transformerList: TransformerList = {
     group: "Tidying Data",
     componentData: {
       init: {
+        name: {
+          placeholder: "e.g., pivot-longer-assessments",
+        },
         context1: {
           title: "Dataset to Pivot",
         },
@@ -913,10 +1044,10 @@ const transformerList: TransformerList = {
           title: "Attributes to Pivot",
         },
         textInput1: {
-          title: "Names To",
+          title: "Names to",
         },
         textInput2: {
-          title: "Values To",
+          title: "Values to",
         },
       },
       transformerFunction: { kind: "datasetCreator", func: pivotLonger },
@@ -931,8 +1062,8 @@ const transformerList: TransformerList = {
         consumes:
           "A dataset to pivot, a list of attributes that should become values, \
           and names for both the attribute that will contain the former attribute \
-          names ('Names To') and the attribute that will contain the values that \
-          were under those attributes ('Values To').",
+          names ('Names to') and the attribute that will contain the values that \
+          were under those attributes ('Values to').",
         produces:
           "A pivoted copy of the input, usually with more cases and fewer attributes.",
         docLink: docLinkFromHeadingID("h.3ag94ew1tob2"),
@@ -943,6 +1074,9 @@ const transformerList: TransformerList = {
     group: "Tidying Data",
     componentData: {
       init: {
+        name: {
+          placeholder: "e.g., pivot-wider-assessments",
+        },
         context1: {
           title: "Dataset to Pivot",
         },
@@ -976,6 +1110,9 @@ const transformerList: TransformerList = {
     group: "Copying",
     componentData: {
       init: {
+        name: {
+          placeholder: "e.g., uneditable-copy",
+        },
         context1: {
           title: "Dataset to Copy",
         },
@@ -995,6 +1132,9 @@ const transformerList: TransformerList = {
     group: "Copying",
     componentData: {
       init: {
+        name: {
+          placeholder: "e.g., editable-copy",
+        },
         context1: {
           title: "Dataset to Copy",
         },
@@ -1018,6 +1158,9 @@ const transformerList: TransformerList = {
     group: "Copying",
     componentData: {
       init: {
+        name: {
+          placeholder: "e.g., copy-structure",
+        },
         context1: {
           title: "Dataset to Copy",
         },

@@ -11,12 +11,14 @@ export type DataSet = {
   editable?: boolean;
 };
 
-export type CodapLanguageType =
-  | "string"
-  | "any"
-  | "number"
-  | "boolean"
-  | "boundary";
+export const codapLanguageTypes = [
+  "Any",
+  "String",
+  "Number",
+  "Boolean",
+  "Boundary",
+] as const;
+export type CodapLanguageType = typeof codapLanguageTypes[number];
 
 /**
  * The properties of a CODAP boundary value that are necessary for
@@ -86,7 +88,7 @@ export const MISSING_VALUE_SCARE_SYMBOL = "\u{1F409}";
 export const MISSING_VALUE_WARNING =
   `Missing values were encountered in this computation. Proceed anyway? ` +
   `Proceeding will produce a missing value report, a table of missing values, ` +
-  `and the transformer's output.`;
+  `and the Transformer's output.`;
 
 /**
  * The format for output for most transformations contains three parts:
